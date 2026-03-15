@@ -27,6 +27,24 @@ const customizer = useCustomizerStore();
 const authStore = useAuthStore();
 const theme = useTheme();
 const { t } = useI18n();
+
+const { languageOptions, currentLanguage, switchLanguage, locale } =
+  useLanguageSwitcher();
+
+const languages = computed(() =>
+  languageOptions.value.map((lang) => ({
+    code: lang.value,
+    name: lang.label,
+    flag: lang.flag,
+  })),
+);
+
+const currentLocale = computed(() => locale.value);
+
+const changeLanguage = async (langCode: string) => {
+  await switchLanguage(langCode as Locale);
+};
+
 const route = useRoute();
 const LAST_BOT_ROUTE_KEY = "astrbot:last_bot_route";
 let dialog = ref(false);
@@ -484,11 +502,19 @@ watch(
     }
   },
 );
+
+// Merry Christmas! 🎄
+const isChristmas = computed(() => {
+  const today = new Date();
+  const month = today.getMonth() + 1; // getMonth() 返回 0-11
+  const day = today.getDate();
+  return month === 12 && day === 25;
+});
 </script>
 
 <template>
-  <v-app-bar elevation="0" :priority="0" height="70" class="px-0">
-    <v-container class="fill-height d-flex align-center">
+  <v-app-bar elevation="0" :priority="0" height="70" class="px-0" app>
+    <div class="fill-height d-flex align-center w-100 px-4">
       <!-- 桌面端标题栏拖拽区域 -->
       <div
         v-if="isDesktopReleaseMode"
@@ -504,7 +530,55 @@ watch(
       ></div>
 
       <div class="d-flex align-center">
-        <Logo />
+        <!-- 桌面端 menu 按钮 - 仅在 bot 模式下显示 -->
+        <v-btn
+          v-if="customizer.viewMode === 'bot'"
+          class="hidden-md-and-down mr-3"
+          icon
+          rounded="sm"
+          variant="flat"
+          @click.stop="customizer.SET_MINI_SIDEBAR(!customizer.mini_sidebar)"
+        >
+          <v-icon>mdi-menu</v-icon>
+        </v-btn>
+        <!-- 移动端 menu 按钮 - 仅在 bot 模式下显示 -->
+        <v-btn
+          v-if="customizer.viewMode === 'bot'"
+          class="hidden-lg-and-up mr-3"
+          icon
+          rounded="sm"
+          variant="flat"
+          @click.stop="customizer.SET_SIDEBAR_DRAWER"
+        >
+          <v-icon>mdi-menu</v-icon>
+        </v-btn>
+      </div>
+
+      <div
+        class="logo-container"
+        :class="{
+          'mobile-logo': $vuetify.display.xs,
+          'chat-mode-logo': customizer.viewMode === 'chat',
+        }"
+        @click="handleLogoClick"
+      >
+        <span class="logo-text Outfit"
+          >Astr<span class="logo-text bot-text-wrapper"
+            >Bot
+            <img
+              v-if="isChristmas"
+              src="@/assets/images/xmas-hat.png"
+              alt="Christmas hat"
+              class="xmas-hat"
+            /> </span
+        ></span>
+        <span
+          class="logo-text logo-text-light Outfit"
+          style="color: grey"
+          v-if="customizer.viewMode === 'chat'"
+          >ChatUI</span
+        >
+        <span class="version-text hidden-xs">{{ botCurrVersion }}</span>
       </div>
 
       <v-spacer />
@@ -713,7 +787,7 @@ watch(
           }}</v-list-item-title>
         </v-list-item>
       </StyledMenu>
-    </v-container>
+    </div>
   </v-app-bar>
 
   <!-- 更新对话框 -->

@@ -49,7 +49,10 @@
                     }}
                   </p>
                   <div class="d-flex align-center">
-                    <div style="max-width: 300px" class="flex-grow-1 mr-2">
+                    <div
+                      style="max-width: 100%; min-width: 200px"
+                      class="flex-grow-1 mr-2"
+                    >
                       <v-text-field
                         v-model="apiBaseUrl"
                         label="Backend URL"
@@ -637,5 +640,14 @@ watch(showProviderDialog, async (visible, wasVisible) => {
 
 .welcome-announcement-markdown {
   line-height: 1.7;
+}
+
+.welcome-announcement-markdown :deep(p > code),
+.welcome-announcement-markdown :deep(li > code) {
+  background-color: rgba(var(--v-theme-on-surface), 0.08) !important;
+  color: rgb(var(--v-theme-primary)) !important;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-weight: bold;
 }
 </style>
