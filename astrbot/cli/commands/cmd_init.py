@@ -1,7 +1,5 @@
 import asyncio
-import platform
-import shutil
-import subprocess
+import os
 from pathlib import Path
 
 import click
@@ -10,29 +8,6 @@ from filelock import FileLock, Timeout
 from astrbot.core.utils.astrbot_path import astrbot_paths
 
 from ..utils import check_dashboard
-
-SYSTEMD_SERVICE = r"""
-# user service
-[Unit]
-Description=AstrBot Service
-Documentation=https://github.com/AstrBotDevs/AstrBot
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-WorkingDirectory=%h/.astrbot
-ExecStart=/usr/bin/astrbot run --backend-only
-Restart=on-failure
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=astrbot-%u
-Environment=PYTHONUNBUFFERED=1
-
-[Install]
-WantedBy=default.target
-"""
 
 
 async def initialize_astrbot(
@@ -70,41 +45,25 @@ async def initialize_astrbot(
             default=True,
         )
     ):
-        await check_dashboard(astrbot_root)
+        # 避免在 systemd 模式下因等待输入而阻塞
+        if os.environ.get("ASTRBOT_SYSTEMD") == "1":
+            click.echo("Systemd detected: Skipping dashboard check.")
+        else:
+            await check_dashboard(astrbot_root)
     else:
         click.echo("你可以使用在线面版（v4.14.4+），填写后端地址的方式来控制。")
 
 
 @click.command()
 @click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompts")
-@click.option("--backend-only", is_flag=True, help="Only initialize the backend")
-def init(yes: bool, backend_only: bool) -> None:
+@click.option("--backend-only", "-b", is_flag=True, help="Only initialize the backend")
+@click.option("--backup", help="Initialize from backup file", type=str)
+def init(yes: bool, backend_only: bool, backup: str | None) -> None:
     """Initialize AstrBot"""
     click.echo("Initializing AstrBot...")
 
-    # 检查当前系统是否为 Linux 且存在 systemd
-    if platform.system() == "Linux" and shutil.which("systemctl"):
-        if yes or click.confirm(
-            "Detected Linux with systemd. Install AstrBot user service?", default=True
-        ):
-            user_config_dir = Path.home() / ".config" / "systemd" / "user"
-            user_config_dir.mkdir(parents=True, exist_ok=True)
-
-            service_path = user_config_dir / "astrbot.service"
-
-            service_path.write_text(SYSTEMD_SERVICE)
-            click.echo(f"Created service file at {service_path}")
-
-            try:
-                subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
-                click.echo("Systemd daemon reloaded.")
-                click.echo("Management commands:")
-                click.echo("  Start:  systemctl --user start astrbot")
-                click.echo("  Stop:   systemctl --user stop astrbot")
-                click.echo("  Enable: systemctl --user enable astrbot")
-                click.echo("  Log:    journalctl --user -u astrbot -f")
-            except subprocess.CalledProcessError as e:
-                click.echo(f"Failed to reload systemd daemon: {e}", err=True)
+    if os.environ.get("ASTRBOT_SYSTEMD") == "1":
+        yes = True
 
     astrbot_root = astrbot_paths.root
     lock_file = astrbot_root / "astrbot.lock"
@@ -115,6 +74,15 @@ def init(yes: bool, backend_only: bool) -> None:
             asyncio.run(
                 initialize_astrbot(astrbot_root, yes=yes, backend_only=backend_only)
             )
+
+            if backup:
+                from .cmd_bk import import_data_command
+
+                click.echo(f"Restoring from backup: {backup}")
+                click.get_current_context().invoke(
+                    import_data_command, backup_file=backup, yes=True
+                )
+
             click.echo("Done! You can now run 'astrbot run' to start AstrBot")
     except Timeout:
         raise click.ClickException(
