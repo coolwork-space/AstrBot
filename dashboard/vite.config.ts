@@ -3,14 +3,13 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import vuetify from 'vite-plugin-vuetify';
 import webfontDl from 'vite-plugin-webfont-dl';
-// @ts-ignore — .mjs not in TS project scope; Vite resolves this at runtime
-import { runMdiSubset } from './scripts/subset-mdi-font.mjs';
 
 // Vite plugin: run MDI icon font subsetting (build only)
 function mdiSubset() {
   return {
     name: 'vite-plugin-mdi-subset',
     async buildStart() {
+      const { runMdiSubset } = await import('./scripts/subset-mdi-font.mjs');
       console.log('\n🔧 Running MDI icon font subsetting...');
       await runMdiSubset();
     },
@@ -19,6 +18,10 @@ function mdiSubset() {
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command }) => ({
+   base: command === 'build'
+    ? process.env.BASE_PATH || '/'
+    : '/',
+
   plugins: [
     // Only run MDI subsetting during production builds, skip in dev server
     ...(command === 'build' ? [mdiSubset()] : []),
