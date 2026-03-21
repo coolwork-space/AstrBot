@@ -19,13 +19,13 @@ Dashboard / Backend:
 - `ASTRBOT_PORT` / `DASHBOARD_PORT`: Dashboard bind port.
 
 Backend-standard SSL names (preferred for server):
-- `ASTRBOT_SSL_ENABLE` / `ASTRBOT_DASHBOARD_SSL_ENABLE`: Enable SSL for API.
-- `ASTRBOT_SSL_CERT` / `ASTRBOT_DASHBOARD_SSL_CERT`: SSL Certificate path for backend.
-- `ASTRBOT_SSL_KEY` / `ASTRBOT_DASHBOARD_SSL_KEY`: SSL Key path for backend.
-- `ASTRBOT_SSL_CA_CERTS` / `ASTRBOT_DASHBOARD_SSL_CA_CERTS`: SSL CA Certs path for backend.
+- `ASTRBOT_SSL_ENABLE` / `DASHBOARD_SSL_ENABLE`: Enable SSL for API.
+- `ASTRBOT_SSL_CERT` / `DASHBOARD_SSL_CERT`: SSL Certificate path for backend.
+- `ASTRBOT_SSL_KEY` / `DASHBOARD_SSL_KEY`: SSL Key path for backend.
+- `ASTRBOT_SSL_CA_CERTS` / `DASHBOARD_SSL_CA_CERTS`: SSL CA Certs path for backend.
 
 Legacy compatibility:
-- The CLI will set both `ASTRBOT_SSL_*` and the legacy `ASTRBOT_DASHBOARD_SSL_*` / `DASHBOARD_SSL_*` names to remain compatible.
+- The CLI will set both `ASTRBOT_SSL_*` and the legacy `DASHBOARD_SSL_*` names to remain compatible.
 
 Network:
 - `http_proxy` / `https_proxy`: Proxy URL.
@@ -53,7 +53,7 @@ import click
 from dotenv import load_dotenv
 from filelock import FileLock, Timeout
 
-from astrbot.cli.utils import check_dashboard
+from astrbot.cli.utils import DashboardManager
 from astrbot.runtime_bootstrap import initialize_runtime_bootstrap
 
 initialize_runtime_bootstrap()
@@ -95,7 +95,7 @@ async def run_astrbot(astrbot_root: Path) -> None:
     ):
         # Avoid blocking when running under systemd by waiting for input
         if os.environ.get("ASTRBOT_SYSTEMD") != "1":
-            await check_dashboard(astrbot_root)
+            await DashboardManager().ensure_installed(astrbot_root)
 
     log_broker = LogBroker()
     LogManager.set_queue_handler(logger, log_broker)
@@ -218,6 +218,8 @@ def run(
         # Mark CLI execution
         os.environ["ASTRBOT_CLI"] = "1"
 
+        from astrbot.core.utils.astrbot_path import astrbot_paths
+
         # Resolve astrbot_root with the following precedence:
         # 1. CLI --root parameter (local variable `root`)
         # 2. ASTRBOT_ROOT environment variable (possibly from .env or parsed service config)
@@ -228,8 +230,6 @@ def run(
         elif os.environ.get("ASTRBOT_ROOT"):
             astrbot_root = Path(os.environ["ASTRBOT_ROOT"])
         else:
-            from astrbot.core.utils.astrbot_path import astrbot_paths
-
             astrbot_root = astrbot_paths.root
 
         if not astrbot_paths.is_root:

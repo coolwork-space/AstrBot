@@ -1,10 +1,22 @@
 """如需修改配置,请在 `data/cmd_config.json` 中修改或者在管理面板中可视化修改｡"""
 
+import binascii
+import hashlib
 import os
+import secrets
 from importlib import metadata
 from typing import Any, TypedDict
 
 from astrbot.core.utils.astrbot_path import get_astrbot_data_path
+
+
+def _generate_random_dashboard_password_hash() -> str:
+    iterations = 200_000
+    salt = secrets.token_bytes(16)
+    secret = secrets.token_bytes(32)
+    dk = hashlib.pbkdf2_hmac("sha256", secret, salt, iterations)
+    return f"pbkdf2_sha256${iterations}${binascii.hexlify(salt).decode()}${dk.hex()}"
+
 
 try:
     __version__ = metadata.version("AstrBot")
@@ -203,7 +215,7 @@ DEFAULT_CONFIG = {
     "dashboard": {
         "enable": True,
         "username": "astrbot",
-        "password": "e045f42cb3af61cad0d5ea200ad3faa9ff185b844af554dd1294195c6050511a",
+        "password": _generate_random_dashboard_password_hash(),
         "jwt_secret": "",
         "host": "0.0.0.0",
         "port": 6185,
@@ -401,6 +413,7 @@ CONFIG_METADATA_2 = {
                         "telegram_command_register": True,
                         "telegram_command_auto_refresh": True,
                         "telegram_command_register_interval": 300,
+                        "telegram_polling_restart_delay": 5.0,
                     },
                     "Discord": {
                         "id": "discord",
@@ -690,6 +703,11 @@ CONFIG_METADATA_2 = {
                         "description": "Telegram 命令自动刷新间隔",
                         "type": "int",
                         "hint": "Telegram 命令自动刷新间隔,单位为秒｡",
+                    },
+                    "telegram_polling_restart_delay": {
+                        "description": "Telegram 轮询重启延迟",
+                        "type": "float",
+                        "hint": "当轮询意外结束尝试自动重启时的延迟时间，理论上越短恢复越快，但过短（<0.1s）可能导致死循环针对 API 服务器的请求阻断。单位为秒。默认为 5s。",
                     },
                     "id": {
                         "description": "机器人名称",
@@ -1073,7 +1091,7 @@ CONFIG_METADATA_2 = {
                 "type": "list",
                 # provider sources templates
                 "config_template": {
-                    "OpenAI": {
+                    "OpenAI Compatible": {
                         "id": "openai",
                         "provider": "openai",
                         "type": "openai_chat_completion",
@@ -1253,6 +1271,7 @@ CONFIG_METADATA_2 = {
                         "api_base": "http://127.0.0.1:11434/v1",
                         "proxy": "",
                         "custom_headers": {},
+                        "ollama_disable_thinking": False,
                     },
                     "LM Studio": {
                         "id": "lm_studio",
@@ -1450,6 +1469,20 @@ CONFIG_METADATA_2 = {
                         "model": "whisper-1",
                         "proxy": "",
                     },
+                    "MiMo STT(API)": {
+                        "id": "mimo_stt",
+                        "provider": "mimo",
+                        "type": "mimo_stt_api",
+                        "provider_type": "speech_to_text",
+                        "enable": False,
+                        "api_key": "",
+                        "api_base": "https://api.xiaomimimo.com/v1",
+                        "model": "mimo-v2-omni",
+                        "mimo-stt-system-prompt": "You are a speech transcription assistant. Transcribe the spoken content from the audio exactly and return only the transcription text.",
+                        "mimo-stt-user-prompt": "Please transcribe the content of the audio and return only the transcription text.",
+                        "timeout": "20",
+                        "proxy": "",
+                    },
                     "Whisper(Local)": {
                         "provider": "openai",
                         "type": "openai_whisper_selfhost",
@@ -1477,6 +1510,23 @@ CONFIG_METADATA_2 = {
                         "api_base": "",
                         "model": "tts-1",
                         "openai-tts-voice": "alloy",
+                        "timeout": "20",
+                        "proxy": "",
+                    },
+                    "MiMo TTS(API)": {
+                        "id": "mimo_tts",
+                        "type": "mimo_tts_api",
+                        "provider": "mimo",
+                        "provider_type": "text_to_speech",
+                        "enable": False,
+                        "api_key": "",
+                        "api_base": "https://api.xiaomimimo.com/v1",
+                        "model": "mimo-v2-tts",
+                        "mimo-tts-voice": "mimo_default",
+                        "mimo-tts-format": "wav",
+                        "mimo-tts-style-prompt": "",
+                        "mimo-tts-dialect": "",
+                        "mimo-tts-seed-text": "Hello, MiMo, have you had lunch?",
                         "timeout": "20",
                         "proxy": "",
                     },
@@ -1781,6 +1831,11 @@ CONFIG_METADATA_2 = {
                         "type": "dict",
                         "items": {},
                         "hint": "此处添加的键值对将被合并到 OpenAI SDK 的 default_headers 中,用于自定义 HTTP 请求头｡值必须为字符串｡",
+                    },
+                    "ollama_disable_thinking": {
+                        "description": "关闭思考模式",
+                        "type": "bool",
+                        "hint": "关闭 Ollama 思考模式。",
                     },
                     "custom_extra_body": {
                         "description": "自定义请求体参数",
@@ -2328,10 +2383,45 @@ CONFIG_METADATA_2 = {
                         "type": "int",
                         "hint": "超时时间,单位为秒｡",
                     },
+                    "mimo-stt-system-prompt": {
+                        "description": "系统提示词",
+                        "type": "string",
+                        "hint": "用于指导 MiMo STT 转录行为的 system prompt。",
+                    },
+                    "mimo-stt-user-prompt": {
+                        "description": "用户提示词",
+                        "type": "string",
+                        "hint": "附加给 MiMo STT 的用户提示词，用于约束返回结果格式。",
+                    },
                     "openai-tts-voice": {
                         "description": "voice",
                         "type": "string",
                         "hint": "OpenAI TTS 的声音｡OpenAI 默认支持:'alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'",
+                    },
+                    "mimo-tts-voice": {
+                        "description": "音色",
+                        "type": "string",
+                        "hint": "MiMo TTS 的音色名称。可选值包括 'mimo_default'、'default_en'、'default_zh'。",
+                    },
+                    "mimo-tts-format": {
+                        "description": "输出格式",
+                        "type": "string",
+                        "hint": "MiMo TTS 生成音频的格式。支持 'wav'、'mp3'、'pcm'。",
+                    },
+                    "mimo-tts-style-prompt": {
+                        "description": "风格提示词",
+                        "type": "string",
+                        "hint": "用于控制生成语音的说话风格、语气或情绪，例如温柔、活泼、沉稳等。可留空。",
+                    },
+                    "mimo-tts-dialect": {
+                        "description": "方言",
+                        "type": "string",
+                        "hint": "指定生成语音时使用的方言或口音，例如四川话、粤语口音等。可留空。",
+                    },
+                    "mimo-tts-seed-text": {
+                        "description": "种子文本",
+                        "type": "string",
+                        "hint": "用于引导音色和说话方式的参考文本，会影响生成语音的表达风格。",
                     },
                     "fishaudio-tts-character": {
                         "description": "character",
