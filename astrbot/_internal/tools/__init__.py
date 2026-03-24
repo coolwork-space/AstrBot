@@ -1,9 +1,5 @@
-"""Internal tools module for AstrBot.
+"""Internal tools module for AstrBot runtime."""
 
-This module provides internal tool abstractions and registry functionality
-for the AstrBot framework.
-"""
+from .base import FunctionTool, ToolSet
 
-from astrbot._internal.tools.base import FunctionTool, ToolExecResult
-
-__all__ = ["FunctionTool", "ToolExecResult"]
+__all__ = ["FunctionTool", "ToolSet"]

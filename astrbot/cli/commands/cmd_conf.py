@@ -60,6 +60,7 @@ def verify_dashboard_password(value: str, stored_hash: str) -> bool:
     Supported format:
     - Argon2 encoded string: $argon2id$...
     - PBKDF2 encoded string: pbkdf2_sha256$...
+    - Legacy SHA-256 (64 hex chars) and MD5 (32 hex chars) for backward compatibility.
     """
     if not stored_hash:
         return False
@@ -83,6 +84,14 @@ def verify_dashboard_password(value: str, stored_hash: str) -> bool:
         except Exception:
             return False
 
+    # Legacy plain hex digests: SHA-256 (64 hex chars) and MD5 (32 hex chars).
+    value_l = value.encode("utf-8")
+    s = stored_hash.lower()
+    if len(s) == 64 and all(ch in "0123456789abcdef" for ch in s):
+        return hashlib.sha256(value_l).hexdigest() == s
+    if len(s) == 32 and all(ch in "0123456789abcdef" for ch in s):
+        return hashlib.md5(value_l).hexdigest() == s
+
     return False
 
 
@@ -97,12 +106,17 @@ def is_dashboard_password_hash(value: str) -> bool:
 
 def is_legacy_dashboard_password_hash(value: str) -> bool:
     """
-    Return True when `value` looks like an old dashboard password hash format.
+    Heuristic: return True if `value` looks like a legacy password hash format.
+    Legacy formats are plain SHA-256 (64 hex chars) or MD5 (32 hex chars) digests.
     """
     if not isinstance(value, str) or not value:
         return False
-    value_l = value.lower()
-    return len(value_l) in {32, 64} and all(ch in "0123456789abcdef" for ch in value_l)
+    # Legacy plain hex digests: SHA-256 (64 hex chars) or MD5 (32 hex chars)
+    if len(value) == 64 and all(ch in "0123456789abcdef" for ch in value.lower()):
+        return True
+    if len(value) == 32 and all(ch in "0123456789abcdef" for ch in value.lower()):
+        return True
+    return False
 
 
 # --- Validators for CLI configuration items ---

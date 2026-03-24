@@ -1,6 +1,9 @@
 """
 Skills Public API for AstrBot.
 
+This module provides a simple, stable interface for skill management,
+delegating to the _internal package.
+
 Two skill types:
 1. Prompt-based: SKILL.md files injected into system prompt
 2. Tool-based: Skills with input_schema converted to FunctionTool
@@ -20,7 +23,10 @@ Example:
 
 from __future__ import annotations
 
-from astrbot.core.agent.tool import FunctionTool
+from astrbot._internal.tools.base import FunctionTool
+
+# Import from _internal package (the canonical source)
+# TODO: fix path - should be core.skills.skill_manager
 from astrbot.core.skills.skill_manager import SkillInfo, SkillManager
 
 __all__ = ["SkillInfo", "SkillManager", "get_skill_manager", "skill_to_tool"]
