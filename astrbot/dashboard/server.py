@@ -6,6 +6,7 @@ import os
 import platform
 import re
 import socket
+import ssl
 from collections.abc import Callable
 from datetime import datetime
 from ipaddress import IPv4Address, IPv6Address, ip_address
@@ -164,6 +165,7 @@ class AstrBotDashboard:
         # 1. Explicit webui_dir argument
         # 2. data/dist/ (user-installed / manually updated dashboard)
         # 3. astrbot/dashboard/dist/ (bundled with the wheel)
+        # resolve() is used throughout to follow symlinks to their real paths.
         if webui_dir and os.path.exists(webui_dir):
             self.data_path = os.path.abspath(webui_dir)
         else:
@@ -171,7 +173,9 @@ class AstrBotDashboard:
             if os.path.exists(user_dist):
                 self.data_path = os.path.abspath(user_dist)
             elif _BUNDLED_DIST.exists():
-                self.data_path = str(_BUNDLED_DIST.absolute())
+                # resolve() follows symlinks so self.data_path points to the
+                # actual directory, not the symlink itself.
+                self.data_path = str(_BUNDLED_DIST.resolve())
                 logger.info("Using bundled dashboard dist: %s", self.data_path)
             else:
                 self.data_path = os.path.abspath(user_dist)
@@ -584,7 +588,11 @@ class AstrBotDashboard:
             config.accesslog = "-"
             config.access_log_format = "%(h)s %(r)s %(s)s %(b)s %(D)s"
 
-        await serve(self.app, config, shutdown_trigger=self.shutdown_trigger)
+        try:
+            await serve(self.app, config, shutdown_trigger=self.shutdown_trigger)
+        except (ssl.SSLError, asyncio.CancelledError):
+            # Client disconnected abruptly — SSL shutdown errors are benign.
+            pass
 
     @staticmethod
     def _build_bind(host: str, port: int) -> str:
