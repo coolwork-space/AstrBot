@@ -268,8 +268,7 @@ const pinnedPlugins = computed(() => {
 </script>
 
 <template>
-  <v-tab-item v-show="activeTab === 'installed'">
-    <div class="mb-4 pt-4 pb-4">
+  <div class="mb-4 pt-4 pb-4">
       <div class="d-flex align-center flex-wrap" style="gap: 12px">
         <h2 class="text-h2 mb-0">{{ tm("titles.installedAstrBotPlugins") }}</h2>
 
@@ -371,12 +370,12 @@ const pinnedPlugins = computed(() => {
               <h3 class="text-h6 mb-0">{{ tm("titles.pinnedPlugins") }}</h3>
             </div>
 
-            <v-row class="mt-3 relative" dense align="center" style="gap: 12px">
+            <v-row class="mt-3 relative" density="compact" align="center" style="gap: 12px">
               <template v-if="!pinnedPlugins || pinnedPlugins.length === 0">
                 <v-col v-for="n in 4" :key="n" cols="auto" />
               </template>
 
-              <transition-group name="list" class="v-row v-row--dense">
+              <transition-group name="list" class="v-row v-row-density-compact">
                 <v-col
                   v-for="(p, index) in pinnedPlugins"
                   :key="p.name"
@@ -849,7 +848,7 @@ const pinnedPlugins = computed(() => {
         </button>
       </template>
     </v-tooltip>
-  </v-tab-item>
+  </div>
 </template>
 
 <style scoped>

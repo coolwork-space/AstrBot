@@ -180,8 +180,7 @@ const marketCategorySelectItems = computed(() =>
 </script>
 
 <template>
-  <v-tab-item v-show="activeTab === 'market'">
-    <div class="mb-6 pt-4 pb-4">
+  <div class="mb-6 pt-4 pb-4">
       <div class="d-flex align-center" style="gap: 12px">
         <div class="d-flex align-center" style="gap: 12px; min-width: 0">
           <h2 class="text-h2 mb-0">
@@ -326,7 +325,7 @@ const marketCategorySelectItems = computed(() =>
         </div>
       </div>
 
-      <v-row style="min-height: 26rem" dense>
+      <v-row style="min-height: 26rem" density="compact">
         <v-col
           v-for="plugin in paginatedPlugins"
           :key="plugin.name"
@@ -373,7 +372,7 @@ const marketCategorySelectItems = computed(() =>
             </v-btn>
           </div>
 
-          <v-row class="mb-6" dense>
+          <v-row class="mb-6" density="compact">
             <v-col
               v-for="plugin in randomPlugins"
               :key="`random-${plugin.name}`"
@@ -393,7 +392,7 @@ const marketCategorySelectItems = computed(() =>
         </div>
       </v-expand-transition>
     </div>
-  </v-tab-item>
+  </div>
 </template>
 
 <style scoped>
